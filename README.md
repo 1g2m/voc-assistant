@@ -1,42 +1,50 @@
-# 客户之声分析助手（VoC Assistant）
+# 西门子家电售后智能客服（演示项目）
 
-基于 LLM 的客户反馈批量分析工具：读取反馈数据，自动完成类别归类与情感判断，输出结构化周报。
+基于 LLM + 本地故障知识库的家电售后客服系统：对话式故障诊断、分点排查指引、报修工单；内置客户反馈批量分析模块。
+
+> ⚠️ AI 演示项目，非西门子官方服务。知识库为模拟资料。
 
 ## 功能
 
-- **单条分析**（`scripts/01_first_ai_call.py`）：一条反馈 → 类别 / 情感 / 关键词
-- **批量分析**（`scripts/02_batch_analyze.py`）：内置数据集批量分析，含输出质量守门
-- **Excel 批量分析**（`scripts/03_analyze_excel.py`）：读取 xlsx 数据源，支持渠道维度汇总，自动生成 Markdown 周报
-- **网页版**（`app.py`）：Streamlit 在线分析——上传 xlsx、实时进度、指标卡、类别/渠道分布图表、一键下载周报
-- **报告输出**：`reports/YYYY-MM-DD_周报.md`（按日命名，含汇总与渠道分布）
+### 💬 在线客服（主页）
+- **对话诊断**：描述故障（如「冰箱不凉了」）→ AI 自动识别家电类型/故障类别/紧急度
+- **知识库驱动**：检索 `knowledge/appliance_kb.json`（25 条：洗衣机/冰箱/洗碗机/烤箱蒸箱/灶具/热水器 + 保修政策），排查步骤来自知识库、不编造
+- **安全优先**：燃气类问题前置安全警示（开窗、关阀、勿开关电器）
+- **报修工单**：自助排查无效 → 表单收集信息 → 生成工单 `SI-YYYYMMDD-XXXX` 落盘 `data/tickets/`
+- **快捷问题**：常见故障一键发送；会话可重置
+
+### 📊 反馈分析（第二模块）
+- Excel 批量上传（日期/渠道/反馈内容）→ LLM 分类与情感判断（守门校验/重问/降级）
+- 总览指标 + 情感环形图 + AI 运营摘要；明细筛选（类别/情感/渠道/关键词）+ Excel 导出
+- 类别/渠道分布图表 + 渠道×类别交叉分析；Markdown 周报生成与下载
 
 ## 技术栈
 
-Python 3.12 · zhipuai SDK（glm-4-flash）· pandas · openpyxl
+Python 3.12 · Streamlit · zhipuai SDK（glm-4-flash）· Altair · pandas · openpyxl
 
 ## 快速开始
 
 ```bash
-# 1. 安装依赖
 .venv\Scripts\python -m pip install -r requirements.txt
-
-# 2. 配置 API Key（bigmodel.cn 免费申请，建议 setx 持久化）
-set ZHIPU_API_KEY=你的key
-
-# 3. 运行（缺省读取 data/sample_feedback.xlsx）
-.venv\Scripts\python scripts/03_analyze_excel.py [数据文件.xlsx]
+set ZHIPU_API_KEY=你的key          # bigmodel.cn 免费申请
+.venv\Scripts\streamlit run app.py
 ```
+
+云端部署：环境变量不可用时自动读取 Streamlit Secrets（`ZHIPU_API_KEY = "..."`）。
 
 ## 目录结构
 
 ```
-scripts/   分析脚本
-data/      反馈数据（xlsx）
-reports/   生成的周报
+app.py                    # 入口：双模块导航（客服/分析）
+scripts/service_core.py   # 客服引擎：路由/知识检索/回复生成/工单
+scripts/feedback_core.py  # 分析引擎：分类/守门/统计/周报
+knowledge/appliance_kb.json  # 故障知识库（演示用）
+data/tickets/             # 报修工单存档
+data/sample_feedback.xlsx    # 反馈分析示例数据
 ```
 
 ## 设计说明
 
-- **输出守门**：模型结果须通过校验（类别五选一、情感三选一），不合法则重问（至多 2 次），仍不合法降级为「未分类」，单列统计、不计入占比分母
-- **稳定性**：单条分析异常不中断整批；写文件统一 UTF-8
-- **随机性**：LLM 输出存在随机性，报告数字以文件内「生成时间」快照为准
+- **回复可靠性**：系统提示词约束排查步骤只能来自检索到的知识条目，检索为空时引导人工而非编造
+- **输出守门**：分类/路由等结构化输出全项校验，异常降级不中断
+- **随机性**：LLM 输出存在随机性，周报数字以生成时间快照为准
