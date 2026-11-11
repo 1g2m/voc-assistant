@@ -105,6 +105,8 @@ def test_apptest():
     assert assistant_msgs[0], "assistant 回复为空"
     assert any(kw in assistant_msgs[0] for kw in ["排查", "步骤", "检查"]), \
         "回复1缺少排查/步骤类字样"
+    assert "依据：知识条目" in assistant_msgs[0], \
+        f"回复1缺少可溯源依据行：{assistant_msgs[0][-80:]}"
     print(f"回复（天气）：{assistant_msgs[-1][:120]}...")
     assert "售后" in assistant_msgs[-1], "范围外回复缺少售后引导字样"
 

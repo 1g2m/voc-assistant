@@ -108,7 +108,7 @@ def generate_reply(client, text, history, route, entries):
         kb_lines = []
         for entry in entries:
             kb_lines.append(
-                f"【{entry['症状']}】可能原因：{'、'.join(entry['可能原因'])}；"
+                f"【条目 {entry['id']} · {entry['症状']}】可能原因：{'、'.join(entry['可能原因'])}；"
                 f"排查步骤：{'；'.join(entry['排查步骤'])}；"
                 f"安全提示：{entry['安全提示']}"
             )
@@ -128,7 +128,9 @@ def generate_reply(client, text, history, route, entries):
 3. 如有安全提示，必须原样给出；
 4. 若紧急度为高或知识库未检索到条目，明确建议转人工报修，并引导用户申请报修（提及「申请报修」表单）；
 5. 若问题与家电售后无关，礼貌说明你只服务西门子家电售后；
-6. 语气专业简洁，每次回复 200 字以内。"""
+6. 语气专业简洁，每次回复 200 字以内；
+7. 可溯源要求：回复末尾另起一行输出「📖 依据：知识条目 {id列表}」，id 为本次参考的知识库条目 id，多个用逗号分隔；
+   若知识库未检索到匹配条目，则输出「📖 依据：通用售后流程建议」；范围外（与家电售后无关）的回复不加此行。"""
 
     user_prompt = f"""历史对话：
 {history_text if history_text else "（无）"}
