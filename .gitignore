@@ -1,0 +1,6 @@
+# 忽略敏感信息和缓存
+.env
+__pycache__/
+*.pyc
+.venv/
+reports/
