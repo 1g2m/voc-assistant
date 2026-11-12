@@ -1,5 +1,7 @@
 # 西门子家电售后智能客服（演示项目）
 
+**🌐 在线演示**：<https://1g2m-voc-assistant-app-jgtv8n.streamlit.app/>
+
 基于 LLM + 本地故障知识库的家电售后客服系统：对话式故障诊断、分点排查指引、报修工单；内置客户反馈批量分析模块。
 
 > ⚠️ AI 演示项目，非西门子官方服务。知识库为模拟资料。
@@ -20,7 +22,7 @@
 
 ## 技术栈
 
-Python 3.12 · Streamlit · zhipuai SDK（glm-4-flash）· Altair · pandas · openpyxl
+Python 3.12 · Streamlit · zhipuai SDK（glm-4-flash-250414，免费模型）· Altair · pandas · openpyxl
 
 ## 快速开始
 
