@@ -78,9 +78,9 @@ def test_apptest():
 
     # 快捷按钮与 chat_input 存在
     chips = [b.label for b in at.button if b.label in
-             ["洗衣机不脱水", "冰箱不制冷", "洗碗机报错 E24", "预约维修", "保修政策"]]
+             ["洗衣机不脱水", "冰箱不制冷", "预约维修", "保修政策"]]
     print(f"快捷按钮：{chips}")
-    assert len(chips) == 5, f"快捷按钮缺失：{chips}"
+    assert len(chips) == 4, f"快捷按钮缺失：{chips}"
     assert len(at.chat_input) == 1, "未找到 chat_input"
 
     # 模拟发送：洗衣机不脱水
