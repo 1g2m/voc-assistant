@@ -39,10 +39,13 @@ QUICK_QUESTIONS = ["洗衣机不脱水", "冰箱不制冷", "预约维修", "保
 REPAIR_KEYWORDS = ("申请报修", "转人工", "报修流程", "建议报修", "报修")
 
 # =====================================================================
-# 品牌样式（西门子风格 · 全深色沉浸版）
-# 色板：底 #0A1622 / 次底 #0D1F2C / 亮青 #2CCBDA / hover 青 #1FB3C2 /
-#       助手气泡 #12303B / 用户气泡 #00646E / 卡片边 #1E4A55 / 卡片底 #0E2E36 /
-#       正文 #D6E4E8 / 次级字 #9FB6BD
+# 品牌样式（Siemens Element / iX 设计系统 · 深色主题官方默认）
+# 色板（封闭色板，仅用官方家族）：Layer0 底 #000028 Deep Blue /
+#       Layer1 卡片 #23233C / Layer3 浮层 #2D2D45 / Layer2 次表面 #12122E /
+#       主文字 #FFFFFF / 次文字 #B3B3BE / 边框分隔 1px #4C4C68 /
+#       品牌色 Petrol #009999（浅字变体 #00C1B6）/ CTA Bold Green #00FFB9 配深字
+# 规则：字重仅 400/600；圆角 ≤4px；一律左对齐；8px 网格间距；无投影；
+#       渐变仅官方三条之一（#009999→#000028）用于单个几何条
 # =====================================================================
 BRAND_CSS = """
 <style>
@@ -51,186 +54,209 @@ BRAND_CSS = """
     footer[data-testid="stFooter"] {display: none;}
     #MainMenu {visibility: hidden;}
 
-    /* ---------- 顶部通告条（主区最上，全宽亮青底深字） ---------- */
-    .siemens-notice {
-        background: #2CCBDA; color: #06222B;
-        text-align: center; font-size: 12.5px; font-weight: 600;
-        padding: 6px 12px; margin: -1rem -1rem 0.75rem -1rem;
+    /* Siemens Sans 不可用，官方 fallback：Arial / Helvetica */
+    [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
+        font-family: Arial, Helvetica, sans-serif;
     }
 
-    /* ---------- hero：全深色沉浸背景 + 右上亮青光晕 ---------- */
-    .siemens-hero {
-        background: radial-gradient(ellipse 620px 420px at 92% 0%, rgba(44,203,218,.22), transparent 60%),
-                    linear-gradient(155deg,#050D18 0%,#0B2333 40%,#0E3D4A 72%,#0F5257 100%);
-        margin: 0 -1rem; padding: 28px 36px;
+    /* ---------- 顶部通告条：Layer2 次表面底，左对齐 12/16 ---------- */
+    .siemens-notice {
+        background: #12122E; color: #B3B3BE;
+        text-align: left; font-size: 12px; line-height: 16px; font-weight: 400;
+        padding: 8px 32px; margin: 0 -1rem 16px -1rem;
+        border-bottom: 1px solid #4C4C68;
     }
+
+    /* ---------- hero：平铺 Deep Blue，唯一官方渐变几何条 ----------
+       #009999→#000028 为官方允许三条渐变之一，只出现在左上 96×4px 强调条 */
+    .siemens-hero {
+        background: #000028;
+        margin: 0 -1rem; padding: 24px 32px;
+        border-bottom: 1px solid #4C4C68;
+        position: relative;
+    }
+    .siemens-hero::before {
+        content: ""; position: absolute; top: 0; left: 32px;
+        width: 96px; height: 4px;
+        background: linear-gradient(90deg, #009999, #000028);
+    }
+    /* 渐变几何条全页仅一处：下半 hero 不重复 */
+    .siemens-hero.no-accent::before {display: none;}
     .siemens-hero .hero-brand-row {
         display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
     }
     .siemens-hero .brand-left {display: flex; align-items: center; gap: 16px;}
     .siemens-hero .siemens-wordmark {
-        font-weight: 700; text-transform: uppercase; letter-spacing: 6px;
-        color: #2CCBDA; font-size: 26px;
+        font-weight: 600; text-transform: uppercase; letter-spacing: 6px;
+        color: #009999; font-size: 26px; line-height: 32px;
     }
     .siemens-hero .divider {
-        width: 1px; height: 24px; background: rgba(214,228,232,.45); display: inline-block;
+        width: 1px; height: 24px; background: #4C4C68; display: inline-block;
     }
-    .siemens-hero .app-title {color: #FFFFFF; font-weight: 700; font-size: 1.15rem;}
+    .siemens-hero .app-title {color: #FFFFFF; font-weight: 600; font-size: 16px; line-height: 20px;}
     .siemens-hero .hero-pill {
-        color: #2CCBDA; border: 1px solid #2CCBDA; background: transparent;
-        border-radius: 999px; padding: 5px 16px; font-size: 0.82rem; white-space: nowrap;
+        color: #B3B3BE; border: 1px solid #66667E; background: transparent;
+        border-radius: 4px; padding: 4px 12px; font-size: 12px; line-height: 16px;
+        font-weight: 400; white-space: nowrap;
     }
     .siemens-hero .hero-hint {
-        display: inline-block; color: #D6E4E8; border: 1px solid rgba(214,228,232,.55);
-        background: transparent; border-radius: 999px;
-        padding: 6px 18px; font-size: 0.86rem; margin: 4px 0 18px 0;
+        display: inline-block; color: #B3B3BE; border: 1px solid #66667E;
+        background: transparent; border-radius: 4px;
+        padding: 4px 12px; font-size: 12px; line-height: 16px; margin: 4px 0 16px 0;
     }
     .siemens-hero .hero-title {
-        color: #FFFFFF; font-weight: 700; font-size: 34px; line-height: 1.25;
+        color: #FFFFFF; font-weight: 600; font-size: 28px; line-height: 36px;
     }
     .siemens-hero .hero-sub {
-        color: #9FC6CE; font-size: 15px; margin-top: 8px;
+        color: #B3B3BE; font-size: 14px; line-height: 20px; margin-top: 8px;
     }
 
-    /* ---------- 底部 footer（黑底白字） ---------- */
+    /* ---------- 底部 footer：Layer2 底 + 顶部 1px 分隔线，左对齐 ---------- */
     .siemens-footer {
-        background: #000000; text-align: center;
-        color: #FFFFFF; font-size: 0.78rem;
-        padding: 12px 0; margin: 16px -1rem 0 -1rem;
+        background: #12122E; text-align: left;
+        color: #B3B3BE; font-size: 12px; line-height: 16px;
+        padding: 8px 32px; margin: 32px -1rem 0 -1rem;
+        border-top: 1px solid #4C4C68;
     }
 
-    /* ---------- 侧栏（dark 主题自动深色，仅调品牌字与导航选中态） ---------- */
+    /* ---------- 侧栏：品牌字标 Petrol + 在线状态点用语义成功色 ---------- */
     .siemens-side-brand {padding: 4px 0 2px 0;}
     .siemens-side-brand .siemens-wordmark {
-        color: #2CCBDA; font-weight: 700; text-transform: uppercase;
-        font-size: 1rem; letter-spacing: 0.24em;
+        color: #009999; font-weight: 600; text-transform: uppercase;
+        font-size: 16px; line-height: 20px; letter-spacing: 0.24em;
     }
     .siemens-side-brand .side-sub {
-        color: #D6E4E8; font-weight: 600; font-size: 0.95rem; margin-top: 2px;
+        color: #FFFFFF; font-weight: 600; font-size: 14px; line-height: 20px; margin-top: 4px;
     }
-    .siemens-status {font-size: 0.8rem; color: #9FB6BD; padding: 2px 0 6px 0;}
+    .siemens-status {font-size: 12px; line-height: 16px; color: #B3B3BE; padding: 4px 0 8px 0;}
     .siemens-status .dot {
         display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-        background: #2CCBDA; margin-right: 6px;
+        background: #28BF66; margin-right: 8px;
     }
 
-    /* 侧栏 radio 导航：选中项亮青高亮 */
+    /* 侧栏 radio 导航：选中项 Petrol 左条高亮 */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
         border-radius: 4px; padding: 4px 8px; transition: background 0.15s;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"],
     [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-        background: rgba(44,203,218,.15); border-left: 3px solid #2CCBDA;
+        background: rgba(0,153,153,.16); border-left: 2px solid #009999;
     }
 
-    /* ---------- 聊天区：无卡片，消息直接排在深底上 ---------- */
+    /* ---------- 聊天区：助手 Layer1 卡片 / 用户 Layer3 浮层 ----------
+       当前 Streamlit 版本头像 testid：用户=stChatMessageAvatarUser（Material 图标），
+       助手=stChatMessageAvatarImage（petrol 圆底 PNG） */
     div[data-testid="stChatMessage"] {
-        background: transparent; border: none; padding: 6px 0;
+        background: transparent; border: none; padding: 8px 0;
     }
     div[data-testid="stChatMessage"] [data-testid="stChatMessageContent"] {
-        border-radius: 8px; padding: 12px 16px; font-size: 0.95rem; max-width: 78%;
+        border-radius: 4px; padding: 12px 16px; font-size: 14px; line-height: 20px;
+        max-width: 78%;
     }
-    /* 用户消息（默认头像为 svg）：气泡 #00646E 白字，右对齐 */
-    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarContainer"] svg) {
+    /* 用户消息：气泡 #2D2D45 白字，右对齐 */
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
         flex-direction: row-reverse;
     }
-    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarContainer"] svg) [data-testid="stChatMessageContent"] {
-        background: #00646E;
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] {
+        background: #2D2D45; border: 1px solid #4C4C68;
     }
-    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarContainer"] svg) [data-testid="stChatMessageContent"] * {
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] * {
         color: #FFFFFF;
     }
-    /* 助手消息：气泡 #12303B 浅青灰字，无边框 */
-    div[data-testid="stChatMessage"]:not(:has([data-testid="stChatMessageAvatarContainer"] svg)) [data-testid="stChatMessageContent"] {
-        background: #12303B; border: none;
+    /* 助手消息：气泡 #23233C 主文字白，1px 卡片描边 */
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarImage"]) [data-testid="stChatMessageContent"] {
+        background: #23233C; border: 1px solid #4C4C68;
     }
-    div[data-testid="stChatMessage"]:not(:has([data-testid="stChatMessageAvatarContainer"] svg)) [data-testid="stChatMessageContent"] * {
-        color: #D6E4E8;
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarImage"]) [data-testid="stChatMessageContent"] * {
+        color: #FFFFFF;
     }
-    /* 头像：assistant 亮青圆底深字「S」，user 深灰蓝圆底亮青字「客」 */
-    [data-testid="stChatMessageAvatarContainer"] {
+    /* 用户头像：隐藏 Material 图标，中性圆底「客」 */
+    [data-testid="stChatMessageAvatarUser"] {
         border-radius: 50%;
         min-width: 32px; min-height: 32px;
         display: flex; align-items: center; justify-content: center;
-        overflow: hidden; font-weight: 700;
+        overflow: hidden; background: #333353;
     }
-    [data-testid="stChatMessageAvatarContainer"] svg,
-    [data-testid="stChatMessageAvatarContainer"] span {display: none;}
-    [data-testid="stChatMessageAvatarContainer"]:has(svg) {
-        background: #24384A;
+    [data-testid="stChatMessageAvatarUser"] span,
+    [data-testid="stChatMessageAvatarUser"] [data-testid="stIconMaterial"] {display: none;}
+    [data-testid="stChatMessageAvatarUser"]::after {
+        content: "客"; color: #FFFFFF; font-size: 12px; font-weight: 600;
     }
-    [data-testid="stChatMessageAvatarContainer"]:has(svg)::after {
-        content: "客"; color: #2CCBDA; font-size: 0.85rem; font-weight: 700;
+    /* 助手头像：预生成 petrol 圆底 PNG，裁圆 */
+    [data-testid="stChatMessageAvatarImage"] {
+        border-radius: 50%;
+        min-width: 32px; min-height: 32px; object-fit: cover;
     }
-    [data-testid="stChatMessageAvatarContainer"]:not(:has(svg)) {
-        background: #2CCBDA;
-    }
-    [data-testid="stChatMessageAvatarContainer"]:not(:has(svg))::after {
-        content: "S"; color: #06222B; font-size: 0.9rem; font-weight: 700;
-    }
-    /* 输入框聚焦态亮青边 */
+    /* 输入框聚焦态 Petrol 边 */
     div[data-testid="stChatInput"]:focus-within {
-        border-color: #2CCBDA !important;
+        border-color: #009999 !important;
     }
 
     /* ---------- 按钮 ---------- */
-    /* 快捷问题 chips / 主按钮：亮青实心底深字，hover 深化 */
+    /* 主按钮（表单提交等核心 CTA）：官方 CTA 规格——实心 Bold Green + 深色文字 */
     button[kind="primary"], button[data-testid="stBaseButton-primary"],
     button[kind="primaryForm"], button[data-testid="stBaseButton-primaryForm"] {
-        background-color: #2CCBDA; border-color: #2CCBDA; color: #06222B;
+        background-color: #00FFB9; border-color: #00FFB9; color: #000028;
         border-radius: 4px; font-weight: 600;
     }
     button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover,
     button[kind="primaryForm"]:hover, button[data-testid="stBaseButton-primaryForm"]:hover {
-        background-color: #1FB3C2; border-color: #1FB3C2; color: #06222B;
+        background-color: #00E5AA; border-color: #00E5AA; color: #000028;
     }
-    /* 次级按钮：透明底描边亮青字 */
+    /* 快捷问题 chips 等次级按钮：官方 ghost 规格——透明底 1px #66667E 白字 */
     button[kind="secondary"], button[data-testid="stBaseButton-secondary"],
     button[kind="secondaryForm"], button[data-testid="stBaseButton-secondaryForm"] {
-        background: transparent; border: 1px solid #2CCBDA; color: #2CCBDA;
-        border-radius: 4px;
+        background: transparent; border: 1px solid #66667E; color: #FFFFFF;
+        border-radius: 4px; font-weight: 400;
     }
     button[kind="secondary"]:hover, button[data-testid="stBaseButton-secondary"]:hover,
     button[kind="secondaryForm"]:hover, button[data-testid="stBaseButton-secondaryForm"]:hover {
-        border-color: #1FB3C2; background: rgba(44,203,218,.12); color: #2CCBDA;
+        border-color: #009999; background: rgba(0,153,153,.12); color: #FFFFFF;
     }
 
-    /* ---------- 指标卡：深色底 + 左侧亮青竖条 ---------- */
+    /* ---------- 指标卡：Layer1 卡片 + 1px 描边，数值用 Bold Green 关键数字档 ---------- */
     [data-testid="stMetric"] {
-        background: #0E2E36;
-        border: 1px solid #1E4A55;
-        border-left: 4px solid #2CCBDA;
+        background: #23233C;
+        border: 1px solid #4C4C68;
         border-radius: 4px;
-        padding: 14px 18px;
+        padding: 16px;
     }
-    [data-testid="stMetricLabel"] p {color: #9FB6BD;}
-    [data-testid="stMetricValue"] {color: #D6E4E8; font-size: 1.8rem;}
+    [data-testid="stMetricLabel"] p {color: #B3B3BE; font-size: 12px; line-height: 16px;}
+    [data-testid="stMetricValue"] {color: #00FFB9; font-size: 24px; line-height: 32px; font-weight: 600;}
 
-    /* ---------- 页签：选中亮青加粗 + 下划线 ---------- */
+    /* ---------- 页签：选中 Petrol 下划线 ---------- */
     button[data-bas-webui-tab-title], [data-testid="stTab"] button {
-        font-size: 1.0rem; font-weight: 600; color: #9FB6BD;
+        font-size: 14px; line-height: 20px; font-weight: 600; color: #B3B3BE;
     }
     button[data-bas-webui-tab-title][aria-selected="true"],
     [data-testid="stTab"] button[aria-selected="true"] {
-        color: #2CCBDA; font-weight: 700;
-        border-bottom: 2px solid #2CCBDA;
+        color: #FFFFFF; font-weight: 600;
+        border-bottom: 2px solid #009999;
     }
 
-    /* ---------- 报修表单卡片：深色边框 + 深底 ---------- */
+    /* ---------- 报修表单卡片：Layer1 + 1px 描边，圆角 4px ---------- */
     [data-testid="stForm"] {
-        background: #0E2E36; border: 1px solid #1E4A55;
-        border-radius: 8px;
+        background: #23233C; border: 1px solid #4C4C68;
+        border-radius: 4px;
     }
 
-    /* ---------- AI 摘要框：深色底 + 亮青左条 ---------- */
+    /* ---------- AI 摘要框：Layer1 卡片 + Petrol 左条 ---------- */
     .siemens-summary {
-        background: #0E2E36; border-left: 4px solid #2CCBDA;
-        border-radius: 4px; padding: 12px 16px; color: #D6E4E8; font-size: 0.95rem;
+        background: #23233C; border-left: 2px solid #009999;
+        border-radius: 4px; padding: 12px 16px; color: #FFFFFF;
+        font-size: 14px; line-height: 20px;
     }
 
-    /* ---------- 报修工单号强调 ---------- */
-    .siemens-ticket-id {color: #2CCBDA; font-weight: 700; font-size: 1.05rem;}
+    /* ---------- 报修工单号强调：链接/关键值用浅 Petrol 文字档 ---------- */
+    .siemens-ticket-id {color: #00C1B6; font-weight: 600; font-size: 16px; line-height: 20px;}
+
+    /* ---------- 知识条目引用 chip（知识库溯源标签） ---------- */
+    .siemens-kb-chip {
+        display: inline-block; background: transparent; border: 1px solid #66667E;
+        border-radius: 4px; padding: 4px 12px; margin: 4px 8px 0 0;
+        color: #B3B3BE; font-size: 12px; line-height: 16px; font-weight: 400;
+    }
 </style>
 """
 st.markdown(BRAND_CSS, unsafe_allow_html=True)
@@ -260,19 +286,19 @@ def render_brand_footer():
 
 
 # ---------- 分布柱状图辅助函数 ----------
-# 统一两个分布图的样式：x 轴标签横排加粗加大（默认竖排难读）、
-# 固定像素尺寸（区域不被窗口/双栏布局挤压），数据需含「名称」「数量」两列
+# 统一两个分布图的样式：序列色从 Petrol #009999 起始；图表基础设施（轴/刻度/
+# 网格线）用官方弱色 #4C4C68 / #333353，标签 #B3B3BE 12px；固定像素尺寸
 def make_distribution_chart(counts_df):
     chart = (
         alt.Chart(counts_df)
-        .mark_bar(color="#2CCBDA")
+        .mark_bar(color="#009999")
         .encode(
             x=alt.X("名称", sort="-y", axis=alt.Axis(
-                labelAngle=0, labelFontWeight="bold", labelFontSize=13, title=None,
-                labelColor="#9FB6BD", domainColor="#9FB6BD", tickColor="#9FB6BD")),
-            y=alt.Y("数量", axis=alt.Axis(title=None, grid=True, gridColor="#1E4A55",
-                                          labelColor="#9FB6BD", domainColor="#9FB6BD",
-                                          tickColor="#9FB6BD")),
+                labelAngle=0, labelFontSize=12, title=None,
+                labelColor="#B3B3BE", domainColor="#4C4C68", tickColor="#4C4C68")),
+            y=alt.Y("数量", axis=alt.Axis(title=None, grid=True, gridColor="#333353",
+                                          labelColor="#B3B3BE", domainColor="#4C4C68",
+                                          tickColor="#4C4C68")),
         )
         .properties(width=420, height=300)
         .configure(background="transparent")
@@ -295,7 +321,7 @@ def make_sentiment_donut(sentiment_counts):
     })
     color_scale = alt.Scale(
         domain=["负面", "正面", "中性"],
-        range=["#C74634", "#009999", "#9AA5AC"],
+        range=["#D72339", "#009999", "#9999A9"],
     )
     chart = (
         alt.Chart(source)
@@ -303,7 +329,7 @@ def make_sentiment_donut(sentiment_counts):
         .encode(
             theta=alt.Theta("数量", stack=True),
             color=alt.Color("情感", scale=color_scale, sort=["负面", "正面", "中性"],
-                            legend=alt.Legend(labelColor="#9FB6BD")),
+                            legend=alt.Legend(labelColor="#B3B3BE")),
             tooltip=["情感", "数量"],
         )
         .properties(width=280, height=280)
@@ -385,13 +411,11 @@ def build_promise_badges(kb):
     return badges
 
 
-# ---------- 渲染服务承诺条（hero 下方，深底亮青边圆角 badge） ----------
+# ---------- 渲染服务承诺条（hero 下方，官方 ghost chip：1px #66667E 描边） ----------
 def render_promise_bar():
     badges = build_promise_badges(load_kb())
     spans = "".join(
-        f'<span style="display:inline-block;background:#0E2E36;border:1px solid #2CCBDA;'
-        f'border-radius:999px;padding:5px 14px;margin:4px 8px 0 0;'
-        f'color:#2CCBDA;font-size:0.82rem;font-weight:600;">{b}</span>'
+        f'<span class="siemens-kb-chip">{b}</span>'
         for b in badges
     )
     st.markdown(f'<div style="margin-top:-8px;">{spans}</div>', unsafe_allow_html=True)
@@ -487,17 +511,17 @@ def render_service_page(client):
         unsafe_allow_html=True,
     )
 
-    # 快捷问题 chips（一排按钮，点击即发送）
+    # 快捷问题 chips（一排按钮，点击即发送；ghost 次级样式，绿色 CTA 仅留给核心提交动作）
     chip_cols = st.columns(len(QUICK_QUESTIONS))
     for col, question in zip(chip_cols, QUICK_QUESTIONS):
-        if col.button(question, key=f"chip_{question}", type="primary"):
+        if col.button(question, key=f"chip_{question}", type="secondary"):
             st.session_state["待发送"] = question
             st.rerun()
 
-    # hero 下半部：指引胶囊 + 大标题块
+    # hero 下半部：指引 chip + h1 标题块（不重复渐变条）
     st.markdown(
         """
-        <div class="siemens-hero" style="padding-top:14px;">
+        <div class="siemens-hero no-accent" style="padding-top:14px;">
             <div class="hero-hint">! 常见问题智能诊断 · 分步排查 · 一键报修（快捷入口见上，或直接在下方输入）</div>
             <div class="hero-title">西门子家电 · 售后智能客服</div>
             <div class="hero-sub">AI 智能诊断 ｜ 知识库可溯源 ｜ 工单进度可查</div>
@@ -578,10 +602,10 @@ def render_selfhelp_page():
             st.markdown("**排查步骤**")
             for i, step in enumerate(entry["排查步骤"], start=1):
                 st.markdown(f"{i}. {step}")
-            # 安全提示用亮青色强调（与品牌色一致）
+            # 安全提示：语义警示色只做左条图形强调，正文保持 primary 白色（官方规则）
             st.markdown(
-                f'<div style="background:#0E2E36;border-left:4px solid #2CCBDA;'
-                f'border-radius:4px;padding:8px 12px;color:#2CCBDA;font-size:0.9rem;">'
+                f'<div style="background:rgba(255,208,15,.08);border-left:2px solid #FFD00F;'
+                f'border-radius:4px;padding:8px 16px;color:#FFFFFF;font-size:14px;line-height:20px;">'
                 f'⚠️ 安全提示：{entry["安全提示"]}</div>',
                 unsafe_allow_html=True,
             )
@@ -626,9 +650,9 @@ def render_analysis_page(client):
             # 文件信息卡
             st.markdown(
                 f"""
-                <div style="background:#0E2E36;border:1px solid #1E4A55;border-radius:10px;padding:12px 16px;font-size:0.9rem;color:#D6E4E8;">
+                <div style="background:#23233C;border:1px solid #4C4C68;border-radius:4px;padding:12px 16px;font-size:14px;line-height:20px;color:#FFFFFF;">
                     <b>📄 {uploaded.name}</b><br/>
-                    总行数：{total_count} ｜ 有效：{valid_count} ｜ 跳过空行：{skipped_count}
+                    <span style="color:#B3B3BE;">总行数：{total_count} ｜ 有效：{valid_count} ｜ 跳过空行：{skipped_count}</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -805,10 +829,10 @@ def render_analysis_page(client):
         if keyword.strip():
             filtered = filtered[filtered["反馈内容"].str.contains(keyword.strip(), na=False)]
 
-        # 负面行整行标红底提示（用 pandas Styler，实现取简）
+        # 负面行整行深色警示底提示（语义危险色只做图形底，正文保持白字保证对比度）
         def _negative_row_style(row):
             if row["情感"] == "负面":
-                return ["background-color: #fdecea; color: #b3261e;"] * len(row)
+                return ["background-color: rgba(215,35,57,.16); color: #FFFFFF;"] * len(row)
             return [""] * len(row)
 
         styler = filtered.style.apply(_negative_row_style, axis=1)
@@ -864,16 +888,16 @@ def render_analysis_page(client):
                 alt.Chart(charts["cross_df"])
                 .mark_bar()
                 .encode(
-                    x=alt.X("渠道:N", axis=alt.Axis(labelAngle=0, labelFontWeight="bold",
-                                                    labelFontSize=13, title=None,
-                                                    labelColor="#9FB6BD", domainColor="#9FB6BD",
-                                                    tickColor="#9FB6BD")),
-                    y=alt.Y("数量:Q", axis=alt.Axis(title=None, grid=True, gridColor="#1E4A55",
-                                                    labelColor="#9FB6BD", domainColor="#9FB6BD",
-                                                    tickColor="#9FB6BD")),
+                    x=alt.X("渠道:N", axis=alt.Axis(labelAngle=0,
+                                                    labelFontSize=12, title=None,
+                                                    labelColor="#B3B3BE", domainColor="#4C4C68",
+                                                    tickColor="#4C4C68")),
+                    y=alt.Y("数量:Q", axis=alt.Axis(title=None, grid=True, gridColor="#333353",
+                                                    labelColor="#B3B3BE", domainColor="#4C4C68",
+                                                    tickColor="#4C4C68")),
                     color=alt.Color("类别:N", scale=alt.Scale(
-                        range=["#2CCBDA", "#009999", "#00CCCC", "#66CCCC", "#8FBFC7"]),
-                        legend=alt.Legend(title=None, labelColor="#9FB6BD")),
+                        range=["#009999", "#00CCCC", "#00997F", "#7D8099", "#B3B3BE"]),
+                        legend=alt.Legend(title=None, labelColor="#B3B3BE")),
                     tooltip=["渠道", "类别", "数量"],
                 )
                 .properties(width=680, height=320)
