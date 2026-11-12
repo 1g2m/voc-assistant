@@ -512,7 +512,7 @@ def render_service_page(client):
     # 聊天历史（含报修表单触发后的工单确认消息）
     messages = st.session_state.setdefault("messages", [])
     for message in messages:
-        avatar = "🔧" if message["role"] == "assistant" else None
+        avatar = str(Path(__file__).parent / "assets" / "avatar_service.png") if message["role"] == "assistant" else None
         with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
 
