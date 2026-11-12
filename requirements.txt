@@ -3,3 +3,5 @@ sniffio
 pandas
 openpyxl
 streamlit
+pillow
+altair
