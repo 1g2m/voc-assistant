@@ -10,21 +10,23 @@
     streamlit run app.py
 """
 
-import datetime    # 周报生成时间、导出文件名
+import datetime    # 周报生成时间、导出文件名、工单状态推断
 import io     # Excel 导出的内存字节流
+import json    # 读取工单 JSON 文件
 import os     # 读环境变量里的 API Key（不使用 check_api_key，它抛 SystemExit 会杀掉网页进程）
 import sys    # 把 scripts/ 加入导入路径，便于复用两个 core 模块
 from pathlib import Path    # 定位 scripts 目录
 
 import altair as alt    # 声明式统计图表（环形图与分布柱状图）
 import pandas as pd    # 读 Excel、筛选明细
+import re    # 从政策条目文本提炼保修/回电时效数字
 import streamlit as st
 from zhipuai import ZhipuAI    # 智谱 SDK，网页内自建客户端
 
 # app.py 在项目根，core 在 scripts/ 下，手动补上导入路径
 sys.path.insert(0, str(Path(__file__).parent / "scripts"))
 from feedback_core import analyze_one, build_report    # noqa: E402
-from service_core import create_ticket, generate_reply, load_kb, retrieve_kb, route_question    # noqa: E402
+from service_core import TICKET_DIR, create_ticket, generate_reply, load_kb, retrieve_kb, route_question    # noqa: E402
 
 st.set_page_config(page_title="西门子家电 · 售后智能客服", page_icon="🔧", layout="wide")
 
@@ -333,6 +335,93 @@ def generate_operation_summary(client, results):
         return None
 
 
+# ---------- 工单状态推断（演示规则） ----------
+# 按提交时间与当前时间的差值推断：24h 内「已提交 · 待派单」；
+# 24-48h「已派单 · 工程师准备中」；超过 48h「维修服务进行中」。
+# 仅为演示用简化流程，不代表真实派单调度。
+def infer_ticket_status(submitted_str):
+    try:
+        submitted = datetime.datetime.strptime(submitted_str, "%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return "状态未知"
+    hours = (datetime.datetime.now() - submitted).total_seconds() / 3600
+    if hours < 24:
+        return "已提交 · 待派单"
+    if hours < 48:
+        return "已派单 · 工程师准备中"
+    return "维修服务进行中"
+
+
+# ---------- 读取工单文件：返回 dict 或 None ----------
+def load_ticket(ticket_id):
+    # 工单号只允许 SI-数字-数字，防止路径拼接异常
+    if not re.fullmatch(r"SI-\d{8}-\d{4}", ticket_id.strip()):
+        return None
+    path = os.path.join(TICKET_DIR, f"{ticket_id.strip()}.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+# ---------- 服务承诺 badges：从知识库政策条目（PL-01/PL-02/PL-03）文本提炼，不硬编码数字 ----------
+def build_promise_badges(kb):
+    # 依次取政策条目文本，用正则抽取保修年数与回电小时数；全国联保为固定表述（知识库无对应数字）
+    policy_text = ""
+    for entry in kb.get("条目", []):
+        if entry["id"] in ("PL-01", "PL-02", "PL-03"):
+            policy_text += "；".join(entry["排查步骤"]) + "；" + entry["报修条件"] + "；"
+
+    m1 = re.search(r"整机保修(\d+)年", policy_text)
+    m2 = re.search(r"主要部件保修(\d+)年", policy_text)
+    m3 = re.search(r"(\d+)小时内.*?电话联系", policy_text)
+
+    badges = [
+        f"✓ 整机保修 {m1.group(1)} 年" if m1 else "✓ 整机保修 1 年",
+        f"✓ 主要部件保修 {m2.group(1)} 年" if m2 else "✓ 主要部件保修 3 年",
+        f"✓ 报修后 {m3.group(1)}h 回电" if m3 else "✓ 报修后 24h 回电",
+        "✓ 全国联保服务",
+    ]
+    return badges
+
+
+# ---------- 渲染服务承诺条（hero 下方，深底亮青边圆角 badge） ----------
+def render_promise_bar():
+    badges = build_promise_badges(load_kb())
+    spans = "".join(
+        f'<span style="display:inline-block;background:#0E2E36;border:1px solid #2CCBDA;'
+        f'border-radius:999px;padding:5px 14px;margin:4px 8px 0 0;'
+        f'color:#2CCBDA;font-size:0.82rem;font-weight:600;">{b}</span>'
+        for b in badges
+    )
+    st.markdown(f'<div style="margin-top:-8px;">{spans}</div>', unsafe_allow_html=True)
+
+
+# ---------- 差评回复话术生成（演示）：复用 service_core 的 glm-4-flash 直调模式 ----------
+# system 角色限定西门子售后客服（演示），要求先致歉认同→处理方案要点→承诺跟进，
+# 100 字内且不编造具体赔偿数字；失败时优雅降级返回固定话术。
+def generate_reply_draft(client, text):
+    system_prompt = """你是「西门子家电售后客服（演示）」。请针对下面的客户差评生成一条回复话术：
+1. 先致歉并认同客户感受；
+2. 给出处理方案要点（如安排工程师检测、优先派单等）；
+3. 承诺后续跟进；
+4. 全文 100 字以内，语气真诚专业；
+5. 不得编造具体赔偿金额或补偿数字。"""
+    try:
+        response = client.chat.completions.create(
+            model="glm-4-flash",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"客户差评：{text}"},
+            ],
+        )
+        draft = (response.choices[0].message.content or "").strip()
+        return draft or "非常抱歉给您带来不便，我们将优先安排工程师上门检测，并持续跟进处理进度，请您放心。"
+    except Exception:
+        # 模型调用失败：降级为固定安抚话术
+        return "非常抱歉给您带来不便，我们将优先安排工程师上门检测，并持续跟进处理进度，请您放心。"
+
+
 # =====================================================================
 # 模块一：在线客服页
 # =====================================================================
@@ -416,6 +505,8 @@ def render_service_page(client):
         """,
         unsafe_allow_html=True,
     )
+    # 服务承诺条：badge 文案从知识库政策条目提炼
+    render_promise_bar()
     st.markdown("")
 
     # 聊天历史（含报修表单触发后的工单确认消息）
@@ -456,7 +547,50 @@ def render_service_page(client):
 
 
 # =====================================================================
-# 模块二：反馈分析页（原 v0.2 逻辑原样迁移，功能零变化）
+# 模块二：自助服务手册页（知识库全量浏览）
+# =====================================================================
+def render_selfhelp_page():
+    st.markdown("### 📖 自助服务手册")
+    st.caption("按家电类型浏览常见故障排查知识与售后政策（演示资料，非西门子官方文档）。")
+
+    kb = load_kb()
+
+    # 家电类型下拉选项：从知识库动态收集（保持出现顺序），「通用」展示为「通用政策」
+    type_order = []
+    for entry in kb.get("条目", []):
+        t = entry["家电类型"]
+        if t not in type_order:
+            type_order.append(t)
+    display_types = ["通用政策" if t == "通用" else t for t in type_order]
+    chosen = st.selectbox("选择家电类型", display_types)
+    kb_type = "通用" if chosen == "通用政策" else chosen
+
+    entries = [e for e in kb.get("条目", []) if e["家电类型"] == kb_type]
+    if not entries:
+        st.warning("该类型暂无知识条目。")
+        return
+
+    for entry in entries:
+        with st.expander(f"{entry['症状']} — {entry['id']}"):
+            st.markdown("**可能原因**")
+            for reason in entry["可能原因"]:
+                st.markdown(f"- {reason}")
+            st.markdown("**排查步骤**")
+            for i, step in enumerate(entry["排查步骤"], start=1):
+                st.markdown(f"{i}. {step}")
+            # 安全提示用亮青色强调（与品牌色一致）
+            st.markdown(
+                f'<div style="background:#0E2E36;border-left:4px solid #2CCBDA;'
+                f'border-radius:4px;padding:8px 12px;color:#2CCBDA;font-size:0.9rem;">'
+                f'⚠️ 安全提示：{entry["安全提示"]}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(f"**报修条件**：{entry['报修条件']}")
+            st.caption(f"📖 知识条目 {entry['id']} · 演示资料")
+
+
+# =====================================================================
+# 模块三：反馈分析页（原 v0.2 逻辑原样迁移，功能零变化）
 # =====================================================================
 def render_analysis_page(client):
     # ---------- 侧边栏：上传 + 文件信息 + 分析按钮 ----------
@@ -693,6 +827,27 @@ def render_analysis_page(client):
             disabled=len(filtered) == 0,
         )
 
+        # ---------- 差评回复话术生成（负面条目专属） ----------
+        negative_texts = filtered[filtered["情感"] == "负面"]["反馈内容"].tolist()
+        if not negative_texts:
+            st.caption("当前筛选结果中没有负面反馈，无需生成回复话术。")
+        else:
+            # 选项展示为反馈文本前 30 字，避免过长
+            options = [t[:30] for t in negative_texts]
+            picked = st.selectbox(
+                "选择要生成回复话术的差评",
+                options,
+                format_func=lambda o: o,
+                key="差评选择",
+            )
+            if st.button("✍️ 生成客服回复话术", type="primary"):
+                with st.spinner("正在生成回复话术…"):
+                    draft = generate_reply_draft(client, dict(zip(options, negative_texts))[picked])
+                st.session_state["差评话术"] = draft
+            # 生成结果用 st.code 展示（可复制）；话术同步存 session_state 供测试断言
+            if st.session_state.get("差评话术"):
+                st.code(st.session_state["差评话术"], language=None)
+
     # ---------- 页签三：图表 ----------
     with tab_chart:
         g1, g2 = st.columns(2)
@@ -784,7 +939,7 @@ with st.sidebar:
 
     page = st.radio(
         "功能导航",
-        ["💬 在线客服", "📊 反馈分析"],
+        ["💬 在线客服", "📊 反馈分析", "📖 自助服务"],
         key="nav_page",
     )
 
@@ -795,12 +950,44 @@ with st.sidebar:
         st.session_state.pop("待发送", None)
         st.rerun()
 
+    # ---------- 工单进度查询（st.form 包裹，回车/点按钮统一触发，避免每键重跑） ----------
+    with st.form("工单进度查询", border=True):
+        query_id = st.text_input("🔍 工单进度查询（输入 SI-xxx）", placeholder="如 SI-20261112-0001")
+        queried = st.form_submit_button("查询进度", width="stretch")
+
+    if queried:
+        ticket = load_ticket(query_id) if query_id.strip() else None
+        if ticket is None:
+            # 查询结果不落 session_state，直接在侧栏提示（本次重跑内渲染）
+            st.session_state["工单查询结果"] = None
+            st.session_state["工单查询已执行"] = True
+        else:
+            ticket["状态"] = infer_ticket_status(ticket.get("提交时间", ""))
+            st.session_state["工单查询结果"] = ticket
+            st.session_state["工单查询已执行"] = True
+
+    # 渲染查询结果（放在 form 外，rerun 后仍可见）
+    if st.session_state.pop("工单查询已执行", False):
+        result = st.session_state.get("工单查询结果")
+        if result is None:
+            st.warning("未找到该工单号，请核对后重试。")
+        else:
+            st.success(
+                f"**工单编号**：{result['工单编号']}\n\n"
+                f"**状态**：{result['状态']}\n\n"
+                f"**提交时间**：{result.get('提交时间', '未知')}\n\n"
+                f"**家电类型**：{result.get('家电类型', '未知')}\n\n"
+                f"**问题描述**：{result.get('问题描述', '无')}"
+            )
+
     st.caption(APP_VERSION)
 
 # ---------- 主区分发：品牌页头 → 页面 → footer ----------
 render_brand_header()
 if page == "💬 在线客服":
     render_service_page(client)
+elif page == "📖 自助服务":
+    render_selfhelp_page()
 else:
     render_analysis_page(client)
 render_brand_footer()
