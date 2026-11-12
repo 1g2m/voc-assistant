@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-西门子售后智能客服 v1.0（演示项目，Streamlit 网页版）
+西门子售后智能客服 v1.1（演示项目，Streamlit 网页版）
 ====================================================
 双模块导航：
   1. 💬 在线客服：故障知识库检索 + LLM 生成回复 + 一键报修工单（scripts/service_core）
@@ -13,7 +13,7 @@
 import datetime    # 周报生成时间、导出文件名、工单状态推断
 import io     # Excel 导出的内存字节流
 import json    # 读取工单 JSON 文件
-import os     # 读环境变量里的 API Key（不使用 check_api_key，它抛 SystemExit 会杀掉网页进程）
+import os     # 读环境变量里的 API Key（Key 检查由本文件负责，core 模块不做 SystemExit 检查）
 import sys    # 把 scripts/ 加入导入路径，便于复用两个 core 模块
 from pathlib import Path    # 定位 scripts 目录
 
@@ -30,7 +30,7 @@ from service_core import TICKET_DIR, create_ticket, generate_reply, load_kb, ret
 
 st.set_page_config(page_title="西门子家电 · 售后智能客服", page_icon="🔧", layout="wide")
 
-APP_VERSION = "v1.0 · Powered by GLM"
+APP_VERSION = "v1.1 · Powered by GLM"
 
 # 快捷问题 chips
 QUICK_QUESTIONS = ["洗衣机不脱水", "冰箱不制冷", "预约维修", "保修政策"]
@@ -313,6 +313,27 @@ def df_to_excel_bytes(frame):
     return buf.getvalue()
 
 
+# ---------- 缓存层：响应速度优化 ----------
+# Streamlit 每次交互整页 rerun，三类重复开销必须缓存掉：
+# 客户端重建、知识库读盘、相同问题的重复分类调用
+@st.cache_resource
+def get_client(api_key):
+    """LLM 客户端全进程复用，rerun 不重建连接。"""
+    return ZhipuAI(api_key=api_key)
+
+
+@st.cache_data
+def get_kb():
+    """知识库 JSON 读盘一次，之后走内存缓存（含头像承诺条/检索/手册页共用）。"""
+    return load_kb()
+
+
+@st.cache_data(ttl=3600)
+def route_cached(text):
+    """相同问题 1 小时内直接复用 LLM 分类结果，省一次模型往返。"""
+    return route_question(client, text)
+
+
 # ---------- 情感分布环形图：三色固定，图例放在下方 ----------
 def make_sentiment_donut(sentiment_counts):
     source = pd.DataFrame({
@@ -413,7 +434,7 @@ def build_promise_badges(kb):
 
 # ---------- 渲染服务承诺条（hero 下方，官方 ghost chip：1px #66667E 描边） ----------
 def render_promise_bar():
-    badges = build_promise_badges(load_kb())
+    badges = build_promise_badges(get_kb())
     spans = "".join(
         f'<span class="siemens-kb-chip">{b}</span>'
         for b in badges
@@ -553,9 +574,9 @@ def render_service_page(client):
         # 三步过程展示：分类 → 检索 → 生成
         with st.status("正在检索知识库…", expanded=True):
             st.write("① 问题分类（LLM 路由）…")
-            route = route_question(client, pending)
+            route = route_cached(pending)
             st.write(f"② 知识库检索（{route.get('家电类型')} / {route.get('故障类别')}）…")
-            entries = retrieve_kb(load_kb(), route, pending)
+            entries = retrieve_kb(get_kb(), route, pending)
             st.write(f"③ 生成回复（命中 {len(entries)} 条知识）…")
             reply = generate_reply(client, pending, messages[:-1], route, entries)
         st.session_state["status_done"] = True
@@ -577,7 +598,7 @@ def render_selfhelp_page():
     st.markdown("### 📖 自助服务手册")
     st.caption("按家电类型浏览常见故障排查知识与售后政策（演示资料，非西门子官方文档）。")
 
-    kb = load_kb()
+    kb = get_kb()
 
     # 家电类型下拉选项：从知识库动态收集（保持出现顺序），「通用」展示为「通用政策」
     type_order = []
@@ -939,7 +960,7 @@ if not api_key:
     )
     st.stop()
 
-client = ZhipuAI(api_key=api_key)
+client = get_client(api_key)
 
 # ---------- 侧边栏：品牌字标 + 在线状态 + 导航 + 版本 ----------
 with st.sidebar:
